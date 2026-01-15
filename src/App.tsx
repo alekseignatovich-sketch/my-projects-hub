@@ -28,10 +28,9 @@ function App() {
 
   const handleLangChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newLang = e.target.value as 'en' | 'ru' | 'es';
-    setLanguage(newLang);
-    if (user) {
-      updatePreferredLanguage(newLang);
-    }
+    updatePreferredLanguage(newLang).then(() => {
+      setLanguage(newLang);
+    });
   };
 
   return (
