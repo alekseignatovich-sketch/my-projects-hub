@@ -1,3 +1,4 @@
+// src/pages/ProjectDetail.tsx
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/useAuth';
@@ -24,6 +25,7 @@ export default function ProjectDetailPage() {
   }, [user, id]);
 
   const loadProjectData = async () => {
+    // Загрузка проекта
     const { data: projectData, error: projectError } = await supabase
       .from('projects')
       .select('*')
@@ -40,6 +42,7 @@ export default function ProjectDetailPage() {
     setTitle(projectData.title);
     setDescription(projectData.description);
 
+    // Загрузка превью
     if (projectData.preview_path) {
       const { data: signedUrlData } = await supabase.storage
         .from('project-assets')
@@ -49,6 +52,7 @@ export default function ProjectDetailPage() {
       }
     }
 
+    // Загрузка этапов
     const { data: tasksData } = await supabase
       .from('tasks')
       .select('*')
@@ -56,7 +60,8 @@ export default function ProjectDetailPage() {
       .order('position', { ascending: true });
     setTasks(tasksData || []);
 
-    const {  notesData } = await supabase
+    // Загрузка заметок
+    const { data: notesData } = await supabase
       .from('notes')
       .select('content')
       .eq('project_id', id)
@@ -126,7 +131,7 @@ export default function ProjectDetailPage() {
   const handleAddTask = async () => {
     if (!newTaskTitle.trim() || !id) return;
 
-    const {  newTask, error } = await supabase
+    const { data: newTask, error } = await supabase
       .from('tasks')
       .insert({
         project_id: id,
