@@ -8,18 +8,17 @@ export function useAuth() {
 
   useEffect(() => {
     const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {  { session } } = await supabase.auth.getSession();
       const sessionUser = session?.user;
 
       if (sessionUser) {
-        const { data: profile, error } = await supabase
+        const {  profile } = await supabase
           .from('user_profiles')
           .select('preferred_language')
           .eq('id', sessionUser.id)
           .single();
 
-        if (error) {
-          // Создаём профиль при первом входе
+        if (!profile) {
           await supabase
             .from('user_profiles')
             .insert({ id: sessionUser.id, preferred_language: 'en' });
@@ -30,14 +29,9 @@ export function useAuth() {
 
       setLoading(false);
 
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      const {  { subscription } } = supabase.auth.onAuthStateChange(
         async (_event, session) => {
           if (session?.user) {
-            const { data: profile } = await supabase
-              .from('user_profiles')
-              .select('preferred_language')
-              .eq('id', session.user.id)
-              .single();
             setUser(session.user);
           } else {
             setUser(null);
@@ -68,16 +62,17 @@ export function useAuth() {
   const logout = () => supabase.auth.signOut();
 
   const updatePreferredLanguage = async (lang: Language) => {
-    if (!user) return;
+    if (!user) return lang;
     await supabase
       .from('user_profiles')
-      .update({ preferred_language: lang, updated_at: new Date().toISOString() })
+      .update({ preferred_language: lang })
       .eq('id', user.id);
+    return lang;
   };
 
   const getPreferredLanguage = async (): Promise<Language> => {
     if (!user) return 'en';
-    const { data: profile } = await supabase
+    const {  profile } = await supabase
       .from('user_profiles')
       .select('preferred_language')
       .eq('id', user.id)
