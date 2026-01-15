@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from './supabase';
+import { Language } from './useI18n';
 
 export function useAuth() {
   const [user, setUser] = useState<any>(null);
@@ -7,20 +8,18 @@ export function useAuth() {
 
   useEffect(() => {
     const initAuth = async () => {
-      const { data } = await supabase.auth.getSession();
-      const sessionUser = data.session?.user;
+      const { data: { session } } = await supabase.auth.getSession();
+      const sessionUser = session?.user;
 
       if (sessionUser) {
-        const {  profile } = await supabase
+        const { data: profile, error } = await supabase
           .from('user_profiles')
           .select('preferred_language')
           .eq('id', sessionUser.id)
           .single();
 
-        let lang = 'en';
-        if (profile) {
-          lang = profile.preferred_language || 'en';
-        } else {
+        if (error) {
+          // Создаём профиль при первом входе
           await supabase
             .from('user_profiles')
             .insert({ id: sessionUser.id, preferred_language: 'en' });
@@ -31,15 +30,14 @@ export function useAuth() {
 
       setLoading(false);
 
-      const {  listener } = supabase.auth.onAuthStateChange(
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (_event, session) => {
           if (session?.user) {
-            const {  profile } = await supabase
+            const { data: profile } = await supabase
               .from('user_profiles')
               .select('preferred_language')
               .eq('id', session.user.id)
               .single();
-
             setUser(session.user);
           } else {
             setUser(null);
@@ -48,7 +46,7 @@ export function useAuth() {
       );
 
       return () => {
-        listener.subscription.unsubscribe();
+        subscription.unsubscribe();
       };
     };
 
@@ -69,12 +67,22 @@ export function useAuth() {
 
   const logout = () => supabase.auth.signOut();
 
-  const updatePreferredLanguage = async (lang: string) => {
+  const updatePreferredLanguage = async (lang: Language) => {
     if (!user) return;
     await supabase
       .from('user_profiles')
       .update({ preferred_language: lang, updated_at: new Date().toISOString() })
       .eq('id', user.id);
+  };
+
+  const getPreferredLanguage = async (): Promise<Language> => {
+    if (!user) return 'en';
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('preferred_language')
+      .eq('id', user.id)
+      .single();
+    return (profile?.preferred_language as Language) || 'en';
   };
 
   return { 
@@ -83,14 +91,7 @@ export function useAuth() {
     login, 
     signup, 
     logout, 
-    preferredLanguage: user ? (async () => {
-      const {  profile } = await supabase
-        .from('user_profiles')
-        .select('preferred_language')
-        .eq('id', user.id)
-        .single();
-      return profile?.preferred_language || 'en';
-    })() : 'en',
+    getPreferredLanguage,
     updatePreferredLanguage 
   };
 }
