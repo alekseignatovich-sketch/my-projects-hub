@@ -1,4 +1,3 @@
-// src/pages/ProjectDetail.tsx
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/useAuth';
@@ -15,7 +14,6 @@ export default function ProjectDetailPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [tasks, setTasks] = useState<any[]>([]);
   const [notes, setNotes] = useState('');
-  const [showNotes, setShowNotes] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const navigate = useNavigate();
 
@@ -25,8 +23,7 @@ export default function ProjectDetailPage() {
   }, [user, id]);
 
   const loadProjectData = async () => {
-    // Загрузка проекта
-    const { data: projectData, error: projectError } = await supabase
+    const {  projectData, error: projectError } = await supabase
       .from('projects')
       .select('*')
       .eq('id', id)
@@ -42,9 +39,8 @@ export default function ProjectDetailPage() {
     setTitle(projectData.title);
     setDescription(projectData.description);
 
-    // Загрузка превью
     if (projectData.preview_path) {
-      const { data: signedUrlData } = await supabase.storage
+      const {  signedUrlData } = await supabase.storage
         .from('project-assets')
         .createSignedUrl(projectData.preview_path, 3600);
       if (signedUrlData) {
@@ -52,16 +48,14 @@ export default function ProjectDetailPage() {
       }
     }
 
-    // Загрузка этапов
-    const { data: tasksData } = await supabase
+    const {  tasksData } = await supabase
       .from('tasks')
       .select('*')
       .eq('project_id', id)
       .order('position', { ascending: true });
     setTasks(tasksData || []);
 
-    // Загрузка заметок
-    const { data: notesData } = await supabase
+    const {  notesData } = await supabase
       .from('notes')
       .select('content')
       .eq('project_id', id)
@@ -131,7 +125,7 @@ export default function ProjectDetailPage() {
   const handleAddTask = async () => {
     if (!newTaskTitle.trim() || !id) return;
 
-    const { data: newTask, error } = await supabase
+    const {  newTask, error } = await supabase
       .from('tasks')
       .insert({
         project_id: id,
@@ -173,7 +167,7 @@ export default function ProjectDetailPage() {
         { project_id: id, content: notes },
         { onConflict: 'project_id' }
       );
-    setShowNotes(false);
+    alert(t('notes_saved'));
   };
 
   const progress = tasks.length
@@ -185,8 +179,8 @@ export default function ProjectDetailPage() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h1 style={{ margin: 0 }}>{title}</h1>
-        <span style={{ fontSize: '14px', color: '#666', fontWeight: 'bold' }}>{progress}%</span>
+        <h1 style={{ margin: 0, color: '#0f0' }}>{title}</h1>
+        <span style={{ fontSize: '14px', fontWeight: 'bold' }}>{progress}%</span>
       </div>
 
       <textarea
@@ -194,7 +188,16 @@ export default function ProjectDetailPage() {
         onChange={e => setDescription(e.target.value)}
         placeholder={t('description')}
         rows={3}
-        style={{ width: '100%', padding: '8px', marginBottom: '16px', fontSize: '16px', border: '1px solid #ccc', borderRadius: '4px' }}
+        style={{ 
+          width: '100%', 
+          padding: '8px', 
+          marginBottom: '16px', 
+          fontSize: '16px', 
+          border: '1px solid #0f0', 
+          borderRadius: '4px',
+          background: 'rgba(0, 20, 0, 0.5)',
+          color: '#0f0'
+        }}
       />
 
       {/* Превью */}
@@ -236,8 +239,7 @@ export default function ProjectDetailPage() {
           backgroundColor: '#007bff',
           color: 'white',
           border: 'none',
-          borderRadius: '4px',
-          cursor: 'pointer'
+          borderRadius: '4px'
         }}
       >
         {t('upload_preview')}
@@ -250,9 +252,7 @@ export default function ProjectDetailPage() {
         style={{ display: 'none' }}
       />
 
-      <h3 style={{ marginBottom: '8px' }}>
-        {t('tasks')} ({tasks.filter(t => t.completed).length}/{tasks.length})
-      </h3>
+      <h3 style={{ color: '#0f0' }}>{t('tasks')} ({tasks.filter(t => t.completed).length}/{tasks.length})</h3>
       <div style={{ marginBottom: '16px' }}>
         {tasks.map(task => (
           <div key={task.id} style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
@@ -270,9 +270,9 @@ export default function ProjectDetailPage() {
               value={task.hours_spent}
               onChange={e => handleUpdateHours(task.id, e.target.value)}
               placeholder="0"
-              style={{ width: '80px', padding: '4px', fontSize: '14px', textAlign: 'right' }}
+              style={{ width: '80px', padding: '4px', fontSize: '14px', textAlign: 'right', background: 'rgba(0,20,0,0.5)', border: '1px solid #0f0', color: '#0f0' }}
             />
-            <span style={{ marginLeft: '4px', fontSize: '14px', color: '#555' }}>{t('hours_spent')}</span>
+            <span style={{ marginLeft: '4px', fontSize: '14px', color: '#0f0' }}>{t('hours_spent')}</span>
           </div>
         ))}
       </div>
@@ -282,7 +282,7 @@ export default function ProjectDetailPage() {
           value={newTaskTitle}
           onChange={e => setNewTaskTitle(e.target.value)}
           placeholder={t('task_title')}
-          style={{ flex: 1, padding: '8px', fontSize: '16px', border: '1px solid #ccc', borderRadius: '4px' }}
+          style={{ flex: 1, padding: '8px', fontSize: '16px', border: '1px solid #0f0', borderRadius: '4px', background: 'rgba(0,20,0,0.5)', color: '#0f0' }}
         />
         <button
           onClick={handleAddTask}
@@ -292,91 +292,43 @@ export default function ProjectDetailPage() {
             backgroundColor: newTaskTitle.trim() ? '#28a745' : '#ccc',
             color: 'white',
             border: 'none',
-            borderRadius: '4px',
-            cursor: newTaskTitle.trim() ? 'pointer' : 'not-allowed'
+            borderRadius: '4px'
           }}
         >
           +
         </button>
       </div>
 
-      <div style={{ marginBottom: '24px' }}>
-        <button
-          onClick={() => setShowNotes(true)}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: '#6c757d',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          {t('notes')}
-        </button>
-      </div>
-
-      {showNotes && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'white',
-            padding: '24px',
-            borderRadius: '8px',
-            width: '90%',
-            maxWidth: '500px',
-            maxHeight: '80vh',
-            overflowY: 'auto'
-          }}>
-            <h3 style={{ marginTop: 0 }}>{t('notes')}</h3>
-            <textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder={t('notes_placeholder')}
-              rows={10}
-              style={{ width: '100%', padding: '8px', fontSize: '16px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '4px' }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-              <button
-                onClick={() => setShowNotes(false)}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#6c757d',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                {t('cancel')}
-              </button>
-              <button
-                onClick={handleSaveNotes}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#007bff',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                {t('save')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Заметки — видимое поле */}
+      <h3 style={{ color: '#0f0' }}>{t('notes')}</h3>
+      <textarea
+        value={notes}
+        onChange={e => setNotes(e.target.value)}
+        placeholder={t('notes_placeholder')}
+        rows={6}
+        style={{ 
+          width: '100%', 
+          padding: '8px', 
+          fontSize: '16px', 
+          border: '1px solid #0f0', 
+          borderRadius: '4px',
+          background: 'rgba(0, 20, 0, 0.5)',
+          color: '#0f0',
+          marginBottom: '8px'
+        }}
+      />
+      <button
+        onClick={handleSaveNotes}
+        style={{
+          padding: '6px 12px',
+          backgroundColor: '#007bff',
+          color: 'white',
+          border: 'none',
+          borderRadius: '4px'
+        }}
+      >
+        {t('save_notes')}
+      </button>
 
       {/* Кнопки */}
       <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
@@ -387,8 +339,7 @@ export default function ProjectDetailPage() {
             backgroundColor: '#6c757d',
             color: 'white',
             border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
+            borderRadius: '4px'
           }}
         >
           ← {t('back_to_projects')}
@@ -400,8 +351,7 @@ export default function ProjectDetailPage() {
             backgroundColor: '#007bff',
             color: 'white',
             border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
+            borderRadius: '4px'
           }}
         >
           {t('save')}
@@ -413,8 +363,7 @@ export default function ProjectDetailPage() {
             backgroundColor: '#dc3545',
             color: 'white',
             border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
+            borderRadius: '4px'
           }}
         >
           {t('delete_project')}
