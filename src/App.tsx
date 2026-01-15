@@ -21,12 +21,10 @@ function App() {
   useEffect(() => {
     if (!loading && user) {
       getPreferredLanguage().then(savedLang => {
-        if (savedLang !== lang) {
-          setLanguage(savedLang);
-        }
+        setLanguage(savedLang);
       });
     }
-  }, [loading, user, getPreferredLanguage, lang, setLanguage]);
+  }, [loading, user]);
 
   const handleLangChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newLang = e.target.value as 'en' | 'ru' | 'es';
