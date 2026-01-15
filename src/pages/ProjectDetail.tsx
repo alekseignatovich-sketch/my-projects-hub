@@ -1,4 +1,3 @@
-// src/pages/ProjectDetail.tsx
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/useAuth';
@@ -25,7 +24,6 @@ export default function ProjectDetailPage() {
   }, [user, id]);
 
   const loadProjectData = async () => {
-    // Загрузка проекта
     const { data: projectData, error: projectError } = await supabase
       .from('projects')
       .select('*')
@@ -42,7 +40,6 @@ export default function ProjectDetailPage() {
     setTitle(projectData.title);
     setDescription(projectData.description);
 
-    // Загрузка превью
     if (projectData.preview_path) {
       const { data: signedUrlData } = await supabase.storage
         .from('project-assets')
@@ -52,16 +49,14 @@ export default function ProjectDetailPage() {
       }
     }
 
-    // Загрузка этапов
-    const { data: tasksData, error: tasksError } = await supabase
+    const { data: tasksData } = await supabase
       .from('tasks')
       .select('*')
       .eq('project_id', id)
       .order('position', { ascending: true });
     setTasks(tasksData || []);
 
-    // Загрузка заметок
-    const { data: notesData } = await supabase
+    const {  notesData } = await supabase
       .from('notes')
       .select('content')
       .eq('project_id', id)
@@ -70,19 +65,42 @@ export default function ProjectDetailPage() {
   };
 
   const handleSaveProject = async () => {
+    if (!title.trim()) {
+      alert(t('project_title_required'));
+      return;
+    }
+
     const { error } = await supabase
       .from('projects')
       .update({ 
-        title, 
-        description, 
+        title: title.trim(), 
+        description: description.trim(),
         updated_at: new Date().toISOString() 
       })
       .eq('id', id);
 
     if (!error) {
-      setProject((prev: any) => ({ ...prev, title, description }));
+      setProject((prev: any) => ({ ...prev, title: title.trim(), description: description.trim() }));
       alert(t('save_success'));
     }
+  };
+
+  const handleDeleteProject = async () => {
+    const confirmed = window.confirm(t('confirm_delete_project'));
+    if (!confirmed) return;
+
+    if (project.preview_path) {
+      await supabase.storage
+        .from('project-assets')
+        .remove([project.preview_path]);
+    }
+
+    await supabase
+      .from('projects')
+      .delete()
+      .eq('id', id);
+
+    navigate('/');
   };
 
   const handleUploadPreview = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,7 +126,7 @@ export default function ProjectDetailPage() {
   const handleAddTask = async () => {
     if (!newTaskTitle.trim() || !id) return;
 
-    const { data: newTask, error } = await supabase
+    const {  newTask, error } = await supabase
       .from('tasks')
       .insert({
         project_id: id,
@@ -174,7 +192,7 @@ export default function ProjectDetailPage() {
         style={{ width: '100%', padding: '8px', marginBottom: '16px', fontSize: '16px', border: '1px solid #ccc', borderRadius: '4px' }}
       />
 
-      {/* Превью — ограничено по высоте */}
+      {/* Превью */}
       {previewUrl && (
         <div style={{ marginBottom: '16px', textAlign: 'center' }}>
           {previewUrl.endsWith('.mp4') ? (
@@ -355,7 +373,7 @@ export default function ProjectDetailPage() {
         </div>
       )}
 
-      {/* Кнопки: На главную + Сохранить */}
+      {/* Кнопки */}
       <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
         <button
           onClick={() => navigate('/')}
@@ -382,6 +400,19 @@ export default function ProjectDetailPage() {
           }}
         >
           {t('save')}
+        </button>
+        <button
+          onClick={handleDeleteProject}
+          style={{
+            padding: '10px 16px',
+            backgroundColor: '#dc3545',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          {t('delete_project')}
         </button>
       </div>
     </div>
