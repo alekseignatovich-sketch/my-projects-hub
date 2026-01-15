@@ -4,6 +4,7 @@ import { useI18n } from './lib/useI18n';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import Dashboard from './pages/Dashboard';
+import ProjectDetailPage from './pages/ProjectDetail';
 
 function ProtectedRoute({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
@@ -13,12 +14,18 @@ function ProtectedRoute({ children }: { children: JSX.Element }) {
 }
 
 function App() {
-  const { user, loading, preferredLanguage, updatePreferredLanguage } = useAuth();
+  const { user, loading, getPreferredLanguage, updatePreferredLanguage } = useAuth();
   const { lang, setLanguage } = useI18n();
 
-  if (!loading && user && preferredLanguage && lang !== preferredLanguage) {
-    setLanguage(preferredLanguage);
-  }
+  useEffect(() => {
+    if (!loading && user) {
+      getPreferredLanguage().then(savedLang => {
+        if (savedLang !== lang) {
+          setLanguage(savedLang);
+        }
+      });
+    }
+  }, [loading, user, getPreferredLanguage, lang, setLanguage]);
 
   const handleLangChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newLang = e.target.value as 'en' | 'ru' | 'es';
@@ -39,6 +46,11 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/project/:id" element={
+            <ProtectedRoute>
+              <ProjectDetailPage />
+            </ProtectedRoute>
+          } />
           <Route path="/" element={
             <ProtectedRoute>
               <Dashboard />
