@@ -26,36 +26,42 @@ export default function ProjectDetailPage() {
 
   const loadProjectData = async () => {
     // Загрузка проекта
-    const {  projectData } = await supabase
+    const { data: projectData, error: projectError } = await supabase
       .from('projects')
       .select('*')
       .eq('id', id)
       .eq('user_id', user.id)
       .single();
-    if (!projectData) return navigate('/');
+
+    if (projectError || !projectData) {
+      navigate('/');
+      return;
+    }
 
     setProject(projectData);
     setTitle(projectData.title);
     setDescription(projectData.description);
 
-    // Превью
+    // Загрузка превью
     if (projectData.preview_path) {
-      const {  signedUrl } = await supabase.storage
+      const { data: signedUrlData } = await supabase.storage
         .from('project-assets')
         .createSignedUrl(projectData.preview_path, 3600);
-      setPreviewUrl(signedUrl);
+      if (signedUrlData) {
+        setPreviewUrl(signedUrlData.signedUrl);
+      }
     }
 
-    // Этапы
-    const {  tasksData } = await supabase
+    // Загрузка этапов
+    const { data: tasksData } = await supabase
       .from('tasks')
       .select('*')
       .eq('project_id', id)
       .order('position', { ascending: true });
     setTasks(tasksData || []);
 
-    // Заметки
-    const {  notesData } = await supabase
+    // Загрузка заметок
+    const { data: notesData } = await supabase
       .from('notes')
       .select('content')
       .eq('project_id', id)
@@ -74,34 +80,40 @@ export default function ProjectDetailPage() {
     const file = e.target.files?.[0];
     if (!file || !id) return;
 
-    const filePath = `projects/${id}/preview.${file.name.split('.').pop()}`;
-    const { error } = await supabase.storage
+    const fileExt = file.name.split('.').pop();
+    const filePath = `projects/${id}/preview.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
       .from('project-assets')
       .upload(filePath, file, { upsert: true });
 
-    if (!error) {
+    if (!uploadError) {
       await supabase
         .from('projects')
         .update({ preview_path: filePath, updated_at: new Date().toISOString() })
         .eq('id', id);
-      loadProjectData(); // обновить превью
+      loadProjectData(); // обновить данные
     }
   };
 
   const handleAddTask = async () => {
-    if (!newTaskTitle.trim()) return;
-    const {  newTask } = await supabase
+    if (!newTaskTitle.trim() || !id) return;
+
+    const { data: newTask, error } = await supabase
       .from('tasks')
       .insert({
         project_id: id,
-        title: newTaskTitle,
+        title: newTaskTitle.trim(),
         completed: false,
         hours_spent: 0
       })
       .select()
       .single();
-    setTasks([...tasks, newTask]);
-    setNewTaskTitle('');
+
+    if (!error && newTask) {
+      setTasks([...tasks, newTask]);
+      setNewTaskTitle('');
+    }
   };
 
   const handleToggleTask = async (taskId: string, completed: boolean) => {
@@ -112,13 +124,13 @@ export default function ProjectDetailPage() {
     setTasks(tasks.map(t => t.id === taskId ? { ...t, completed } : t));
   };
 
-  const handleUpdateHours = async (taskId: string, hours: string) => {
-    const numHours = parseFloat(hours) || 0;
+  const handleUpdateHours = async (taskId: string, hoursStr: string) => {
+    const hours = parseFloat(hoursStr) || 0;
     await supabase
       .from('tasks')
-      .update({ hours_spent: numHours })
+      .update({ hours_spent: hours })
       .eq('id', taskId);
-    setTasks(tasks.map(t => t.id === taskId ? { ...t, hours_spent: numHours } : t));
+    setTasks(tasks.map(t => t.id === taskId ? { ...t, hours_spent: hours } : t));
   };
 
   const handleSaveNotes = async () => {
@@ -141,9 +153,9 @@ export default function ProjectDetailPage() {
   return (
     <div>
       {/* Заголовок */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>{title}</h1>
-        <span style={{ fontSize: '14px', color: '#666' }}>{progress}%</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h1 style={{ margin: 0 }}>{title}</h1>
+        <span style={{ fontSize: '14px', color: '#666', fontWeight: 'bold' }}>{progress}%</span>
       </div>
 
       {/* Описание */}
@@ -152,14 +164,14 @@ export default function ProjectDetailPage() {
         onChange={e => setDescription(e.target.value)}
         placeholder={t('description')}
         rows={3}
-        style={{ width: '100%', padding: '8px', marginBottom: '16px', fontSize: '16px' }}
+        style={{ width: '100%', padding: '8px', marginBottom: '16px', fontSize: '16px', border: '1px solid #ccc', borderRadius: '4px' }}
       />
 
       {/* Превью */}
       {previewUrl && (
         <div style={{ marginBottom: '16px' }}>
           {previewUrl.endsWith('.mp4') ? (
-            <video src={previewUrl} controls width="100%" />
+            <video src={previewUrl} controls width="100%" style={{ borderRadius: '4px' }} />
           ) : (
             <img src={previewUrl} alt="Preview" style={{ width: '100%', borderRadius: '4px' }} />
           )}
@@ -174,7 +186,8 @@ export default function ProjectDetailPage() {
           backgroundColor: '#007bff',
           color: 'white',
           border: 'none',
-          borderRadius: '4px'
+          borderRadius: '4px',
+          cursor: 'pointer'
         }}
       >
         {t('upload_preview')}
@@ -182,13 +195,15 @@ export default function ProjectDetailPage() {
       <input
         id="preview-input"
         type="file"
-        accept="image/*,video/*,.gif"
+        accept="image/*,video/mp4,.gif"
         onChange={handleUploadPreview}
         style={{ display: 'none' }}
       />
 
       {/* Этапы */}
-      <h3>{t('tasks')} ({tasks.filter(t => t.completed).length}/{tasks.length})</h3>
+      <h3 style={{ marginBottom: '8px' }}>
+        {t('tasks')} ({tasks.filter(t => t.completed).length}/{tasks.length})
+      </h3>
       <div style={{ marginBottom: '16px' }}>
         {tasks.map(task => (
           <div key={task.id} style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
@@ -196,18 +211,19 @@ export default function ProjectDetailPage() {
               type="checkbox"
               checked={task.completed}
               onChange={e => handleToggleTask(task.id, e.target.checked)}
-              style={{ marginRight: '8px' }}
+              style={{ marginRight: '8px', transform: 'scale(1.2)' }}
             />
-            <span style={{ flex: 1 }}>{task.title}</span>
+            <span style={{ flex: 1, fontSize: '16px' }}>{task.title}</span>
             <input
               type="number"
               step="0.25"
+              min="0"
               value={task.hours_spent}
               onChange={e => handleUpdateHours(task.id, e.target.value)}
               placeholder="0"
-              style={{ width: '80px', padding: '4px', fontSize: '14px' }}
+              style={{ width: '80px', padding: '4px', fontSize: '14px', textAlign: 'right' }}
             />
-            <span style={{ marginLeft: '4px', fontSize: '14px' }}>{t('hours_spent')}</span>
+            <span style={{ marginLeft: '4px', fontSize: '14px', color: '#555' }}>{t('hours_spent')}</span>
           </div>
         ))}
       </div>
@@ -218,16 +234,18 @@ export default function ProjectDetailPage() {
           value={newTaskTitle}
           onChange={e => setNewTaskTitle(e.target.value)}
           placeholder={t('task_title')}
-          style={{ flex: 1, padding: '8px', fontSize: '16px' }}
+          style={{ flex: 1, padding: '8px', fontSize: '16px', border: '1px solid #ccc', borderRadius: '4px' }}
         />
         <button
           onClick={handleAddTask}
+          disabled={!newTaskTitle.trim()}
           style={{
             padding: '8px 16px',
-            backgroundColor: '#28a745',
+            backgroundColor: newTaskTitle.trim() ? '#28a745' : '#ccc',
             color: 'white',
             border: 'none',
-            borderRadius: '4px'
+            borderRadius: '4px',
+            cursor: newTaskTitle.trim() ? 'pointer' : 'not-allowed'
           }}
         >
           +
@@ -243,7 +261,8 @@ export default function ProjectDetailPage() {
             backgroundColor: '#6c757d',
             color: 'white',
             border: 'none',
-            borderRadius: '4px'
+            borderRadius: '4px',
+            cursor: 'pointer'
           }}
         >
           {t('notes')}
@@ -261,25 +280,40 @@ export default function ProjectDetailPage() {
           background: 'rgba(0,0,0,0.5)',
           display: 'flex',
           justifyContent: 'center',
-          alignItems: 'center'
+          alignItems: 'center',
+          zIndex: 1000
         }}>
           <div style={{
             background: 'white',
             padding: '24px',
             borderRadius: '8px',
             width: '90%',
-            maxWidth: '500px'
+            maxWidth: '500px',
+            maxHeight: '80vh',
+            overflowY: 'auto'
           }}>
-            <h3>{t('notes')}</h3>
+            <h3 style={{ marginTop: 0 }}>{t('notes')}</h3>
             <textarea
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder={t('notes_placeholder')}
               rows={10}
-              style={{ width: '100%', padding: '8px', fontSize: '16px', marginBottom: '12px' }}
+              style={{ width: '100%', padding: '8px', fontSize: '16px', marginBottom: '12px', border: '1px solid #ccc', borderRadius: '4px' }}
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-              <button onClick={() => setShowNotes(false)}>{t('cancel')}</button>
+              <button
+                onClick={() => setShowNotes(false)}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                {t('cancel')}
+              </button>
               <button
                 onClick={handleSaveNotes}
                 style={{
@@ -287,7 +321,8 @@ export default function ProjectDetailPage() {
                   backgroundColor: '#007bff',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '4px'
+                  borderRadius: '4px',
+                  cursor: 'pointer'
                 }}
               >
                 {t('save')}
@@ -306,7 +341,8 @@ export default function ProjectDetailPage() {
             backgroundColor: '#007bff',
             color: 'white',
             border: 'none',
-            borderRadius: '4px'
+            borderRadius: '4px',
+            cursor: 'pointer'
           }}
         >
           {t('save')}
@@ -318,7 +354,8 @@ export default function ProjectDetailPage() {
             backgroundColor: '#6c757d',
             color: 'white',
             border: 'none',
-            borderRadius: '4px'
+            borderRadius: '4px',
+            cursor: 'pointer'
           }}
         >
           {t('cancel')}
