@@ -1,3 +1,4 @@
+// src/pages/ProjectDetail.tsx
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/useAuth';
@@ -24,7 +25,8 @@ export default function ProjectDetailPage() {
   }, [user, id]);
 
   const loadProjectData = async () => {
-    const {  projectData, error: projectError } = await supabase
+    // Загрузка проекта
+    const { data: projectData, error: projectError } = await supabase
       .from('projects')
       .select('*')
       .eq('id', id)
@@ -40,8 +42,9 @@ export default function ProjectDetailPage() {
     setTitle(projectData.title);
     setDescription(projectData.description);
 
+    // Загрузка превью
     if (projectData.preview_path) {
-      const {  signedUrlData } = await supabase.storage
+      const { data: signedUrlData } = await supabase.storage
         .from('project-assets')
         .createSignedUrl(projectData.preview_path, 3600);
       if (signedUrlData) {
@@ -49,13 +52,15 @@ export default function ProjectDetailPage() {
       }
     }
 
-    const {  tasksData } = await supabase
+    // Загрузка этапов
+    const { data: tasksData, error: tasksError } = await supabase
       .from('tasks')
       .select('*')
       .eq('project_id', id)
       .order('position', { ascending: true });
     setTasks(tasksData || []);
 
+    // Загрузка заметок
     const { data: notesData } = await supabase
       .from('notes')
       .select('content')
@@ -75,7 +80,7 @@ export default function ProjectDetailPage() {
       .eq('id', id);
 
     if (!error) {
-      setProject(prev => ({ ...prev, title, description }));
+      setProject((prev: any) => ({ ...prev, title, description }));
       alert(t('save_success'));
     }
   };
@@ -103,7 +108,7 @@ export default function ProjectDetailPage() {
   const handleAddTask = async () => {
     if (!newTaskTitle.trim() || !id) return;
 
-    const {  newTask, error } = await supabase
+    const { data: newTask, error } = await supabase
       .from('tasks')
       .insert({
         project_id: id,
