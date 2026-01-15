@@ -28,5 +28,6 @@
   "add_task": "Agregar tarea",
   "file_name": "Nombre del archivo",
   "download": "Descargar",
-  "upload_files": "Subir archivos"
+  "upload_files": "Subir archivos",
+  "back_to_projects": "Volver a Proyectos"
 }
