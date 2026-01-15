@@ -28,5 +28,6 @@
   "add_task": "Add task",
   "file_name": "File name",
   "download": "Download",
-  "upload_files": "Upload files"
+  "upload_files": "Upload files",
+  "back_to_projects": "Back to Projects"
 }
