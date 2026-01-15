@@ -28,5 +28,6 @@
   "add_task": "Добавить этап",
   "file_name": "Имя файла",
   "download": "Скачать",
-  "upload_files": "Загрузить файлы"
+  "upload_files": "Загрузить файлы",
+  "back_to_projects": "На главную"
 }
