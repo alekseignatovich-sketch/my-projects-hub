@@ -15,7 +15,7 @@ function ProtectedRoute({ children }: { children: JSX.Element }) {
 }
 
 function App() {
-  const { user, loading, getPreferredLanguage, updatePreferredLanguage } = useAuth();
+  const { user, loading, getPreferredLanguage } = useAuth();
   const { lang, setLanguage } = useI18n();
 
   useEffect(() => {
@@ -28,9 +28,15 @@ function App() {
 
   const handleLangChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newLang = e.target.value as 'en' | 'ru' | 'es';
-    updatePreferredLanguage(newLang).then(() => {
-      setLanguage(newLang);
-    });
+    // Мгновенно меняем язык в UI
+    setLanguage(newLang);
+    // Сохраняем в фоне
+    if (user) {
+      supabase
+        .from('user_profiles')
+        .update({ preferred_language: newLang })
+        .eq('id', user.id);
+    }
   };
 
   return (
@@ -45,7 +51,9 @@ function App() {
               fontSize: '16px',
               padding: '6px 12px',
               borderRadius: '4px',
-              border: '1px solid #ccc'
+              border: '1px solid #0f0',
+              background: 'rgba(0,20,0,0.5)',
+              color: '#0f0'
             }}
           >
             <option value="en">English</option>
