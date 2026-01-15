@@ -1,10 +1,10 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useEffect } from 'react-router-dom';
 import { useAuth } from './lib/useAuth';
 import { useI18n } from './lib/useI18n';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import Dashboard from './pages/Dashboard';
-import ProjectDetailPage from './pages/ProjectDetail';
+import ProjectDetailPage from './pages/ProjectDetail'; // теперь есть файл
 
 function ProtectedRoute({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
