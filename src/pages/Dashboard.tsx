@@ -19,40 +19,42 @@ export default function Dashboard() {
   }, [user]);
 
   const fetchProjects = async () => {
-    const {  data } = await supabase
+    const {  projectsData } = await supabase
       .from('projects')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    if (!data) {
+    if (!projectsData) {
       setLoading(false);
       return;
     }
 
-    setProjects(data);
+    setProjects(projectsData);
 
-    // Загрузка превью и прогресса для каждого проекта
     const previews: Record<string, string> = {};
     const progresses: Record<string, number> = {};
 
-    for (const project of data) {
+    for (const project of projectsData) {
       // Превью
       if (project.preview_path) {
-        const {  signedUrl } = await supabase.storage
+        const {  signedUrlData } = await supabase.storage
           .from('project-assets')
           .createSignedUrl(project.preview_path, 3600);
-        if (signedUrl) previews[project.id] = signedUrl;
+        if (signedUrlData?.signedUrl) {
+          previews[project.id] = signedUrlData.signedUrl;
+        }
       }
 
       // Прогресс
-      const {  tasks } = await supabase
+      const {  tasksData } = await supabase
         .from('tasks')
         .select('completed')
         .eq('project_id', project.id);
-      if (tasks) {
-        const completed = tasks.filter(t => t.completed).length;
-        progresses[project.id] = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
+      
+      if (tasksData) {
+        const completed = tasksData.filter((t: any) => t.completed).length;
+        progresses[project.id] = tasksData.length ? Math.round((completed / tasksData.length) * 100) : 0;
       }
     }
 
@@ -62,12 +64,12 @@ export default function Dashboard() {
   };
 
   const handleCreate = async () => {
-    const {  data } = await supabase
+    const {  newProject } = await supabase
       .from('projects')
       .insert({ user_id: user.id, title: t('new_project'), description: '' })
       .select()
       .single();
-    navigate(`/project/${data.id}`);
+    navigate(`/project/${newProject.id}`);
   };
 
   if (loading) return <div>{t('loading')}...</div>;
@@ -125,7 +127,6 @@ export default function Dashboard() {
                 overflow: 'hidden'
               }}
             >
-              {/* Прогресс */}
               <div style={{
                 position: 'absolute',
                 top: '8px',
@@ -138,7 +139,6 @@ export default function Dashboard() {
 
               <h3 style={{ margin: '0 0 6px 0', fontSize: '18px' }}>{project.title}</h3>
               
-              {/* Мини-превью */}
               {previewUrls[project.id] && (
                 <div style={{ height: '60px', overflow: 'hidden', borderRadius: '4px', marginBottom: '6px' }}>
                   {previewUrls[project.id]?.endsWith('.mp4') ? (
