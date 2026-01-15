@@ -10,11 +10,11 @@ export type Language = 'en' | 'ru' | 'es';
 
 export function useI18n() {
   const [lang, setLang] = useState<Language>(DEFAULT_LANG);
-  const [t, setT] = useState<(key: string) => string>(() => (key) => key);
+  const [t, setT] = useState<(key: string) => string>(() => (key: string) => key);
 
   useEffect(() => {
     const translations = LOCALES[lang] || LOCALES[DEFAULT_LANG];
-    setT(() => (key) => translations[key] || key);
+    setT(() => (key: string) => translations[key] || key);
   }, [lang]);
 
   const setLanguage = useCallback((newLang: Language) => {
