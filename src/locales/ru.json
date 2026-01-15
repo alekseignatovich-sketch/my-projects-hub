@@ -1,6 +1,7 @@
 {
   "project_title_required": "Название проекта обязательно",
   "login": "Войти",
+  "logout": "Выйти",
   "signup": "Регистрация",
   "email": "Эл. почта",
   "password": "Пароль",
