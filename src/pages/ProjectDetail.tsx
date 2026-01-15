@@ -23,14 +23,14 @@ export default function ProjectDetailPage() {
   }, [user, id]);
 
   const loadProjectData = async () => {
-    const {  projectData, error: projectError } = await supabase
+    const {  projectData } = await supabase
       .from('projects')
       .select('*')
       .eq('id', id)
       .eq('user_id', user.id)
       .single();
 
-    if (projectError || !projectData) {
+    if (!projectData) {
       navigate('/');
       return;
     }
@@ -43,7 +43,7 @@ export default function ProjectDetailPage() {
       const {  signedUrlData } = await supabase.storage
         .from('project-assets')
         .createSignedUrl(projectData.preview_path, 3600);
-      if (signedUrlData) {
+      if (signedUrlData?.signedUrl) {
         setPreviewUrl(signedUrlData.signedUrl);
       }
     }
@@ -125,7 +125,7 @@ export default function ProjectDetailPage() {
   const handleAddTask = async () => {
     if (!newTaskTitle.trim() || !id) return;
 
-    const {  newTask, error } = await supabase
+    const {  newTask } = await supabase
       .from('tasks')
       .insert({
         project_id: id,
@@ -136,7 +136,7 @@ export default function ProjectDetailPage() {
       .select()
       .single();
 
-    if (!error && newTask) {
+    if (newTask) {
       setTasks([...tasks, newTask]);
       setNewTaskTitle('');
     }
@@ -200,7 +200,6 @@ export default function ProjectDetailPage() {
         }}
       />
 
-      {/* Превью */}
       {previewUrl && (
         <div style={{ marginBottom: '16px', textAlign: 'center' }}>
           {previewUrl.endsWith('.mp4') ? (
@@ -299,7 +298,6 @@ export default function ProjectDetailPage() {
         </button>
       </div>
 
-      {/* Заметки — видимое поле */}
       <h3 style={{ color: '#0f0' }}>{t('notes')}</h3>
       <textarea
         value={notes}
@@ -330,7 +328,6 @@ export default function ProjectDetailPage() {
         {t('save_notes')}
       </button>
 
-      {/* Кнопки */}
       <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
         <button
           onClick={() => navigate('/')}
