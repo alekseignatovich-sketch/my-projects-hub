@@ -1,4 +1,3 @@
-// src/pages/ProjectDetail.tsx
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/useAuth';
@@ -25,8 +24,7 @@ export default function ProjectDetailPage() {
   }, [user, id]);
 
   const loadProjectData = async () => {
-    // Загрузка проекта
-    const { data: projectData, error: projectError } = await supabase
+    const {  projectData, error: projectError } = await supabase
       .from('projects')
       .select('*')
       .eq('id', id)
@@ -42,9 +40,8 @@ export default function ProjectDetailPage() {
     setTitle(projectData.title);
     setDescription(projectData.description);
 
-    // Загрузка превью
     if (projectData.preview_path) {
-      const { data: signedUrlData } = await supabase.storage
+      const {  signedUrlData } = await supabase.storage
         .from('project-assets')
         .createSignedUrl(projectData.preview_path, 3600);
       if (signedUrlData) {
@@ -52,15 +49,13 @@ export default function ProjectDetailPage() {
       }
     }
 
-    // Загрузка этапов
-    const { data: tasksData } = await supabase
+    const {  tasksData } = await supabase
       .from('tasks')
       .select('*')
       .eq('project_id', id)
       .order('position', { ascending: true });
     setTasks(tasksData || []);
 
-    // Загрузка заметок
     const { data: notesData } = await supabase
       .from('notes')
       .select('content')
@@ -70,10 +65,19 @@ export default function ProjectDetailPage() {
   };
 
   const handleSaveProject = async () => {
-    await supabase
+    const { error } = await supabase
       .from('projects')
-      .update({ title, description, updated_at: new Date().toISOString() })
+      .update({ 
+        title, 
+        description, 
+        updated_at: new Date().toISOString() 
+      })
       .eq('id', id);
+
+    if (!error) {
+      setProject(prev => ({ ...prev, title, description }));
+      alert(t('save_success'));
+    }
   };
 
   const handleUploadPreview = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -92,14 +96,14 @@ export default function ProjectDetailPage() {
         .from('projects')
         .update({ preview_path: filePath, updated_at: new Date().toISOString() })
         .eq('id', id);
-      loadProjectData(); // обновить данные
+      loadProjectData();
     }
   };
 
   const handleAddTask = async () => {
     if (!newTaskTitle.trim() || !id) return;
 
-    const { data: newTask, error } = await supabase
+    const {  newTask, error } = await supabase
       .from('tasks')
       .insert({
         project_id: id,
@@ -152,13 +156,11 @@ export default function ProjectDetailPage() {
 
   return (
     <div>
-      {/* Заголовок */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <h1 style={{ margin: 0 }}>{title}</h1>
         <span style={{ fontSize: '14px', color: '#666', fontWeight: 'bold' }}>{progress}%</span>
       </div>
 
-      {/* Описание */}
       <textarea
         value={description}
         onChange={e => setDescription(e.target.value)}
@@ -167,13 +169,33 @@ export default function ProjectDetailPage() {
         style={{ width: '100%', padding: '8px', marginBottom: '16px', fontSize: '16px', border: '1px solid #ccc', borderRadius: '4px' }}
       />
 
-      {/* Превью */}
+      {/* Превью — ограничено по высоте */}
       {previewUrl && (
-        <div style={{ marginBottom: '16px' }}>
+        <div style={{ marginBottom: '16px', textAlign: 'center' }}>
           {previewUrl.endsWith('.mp4') ? (
-            <video src={previewUrl} controls width="100%" style={{ borderRadius: '4px' }} />
+            <video
+              src={previewUrl}
+              controls
+              style={{
+                maxWidth: '100%',
+                maxHeight: '300px',
+                width: 'auto',
+                height: 'auto',
+                borderRadius: '4px'
+              }}
+            />
           ) : (
-            <img src={previewUrl} alt="Preview" style={{ width: '100%', borderRadius: '4px' }} />
+            <img
+              src={previewUrl}
+              alt="Preview"
+              style={{
+                maxWidth: '100%',
+                maxHeight: '300px',
+                width: 'auto',
+                height: 'auto',
+                borderRadius: '4px'
+              }}
+            />
           )}
         </div>
       )}
@@ -200,7 +222,6 @@ export default function ProjectDetailPage() {
         style={{ display: 'none' }}
       />
 
-      {/* Этапы */}
       <h3 style={{ marginBottom: '8px' }}>
         {t('tasks')} ({tasks.filter(t => t.completed).length}/{tasks.length})
       </h3>
@@ -228,7 +249,6 @@ export default function ProjectDetailPage() {
         ))}
       </div>
 
-      {/* Добавить этап */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
         <input
           value={newTaskTitle}
@@ -252,7 +272,6 @@ export default function ProjectDetailPage() {
         </button>
       </div>
 
-      {/* Заметки */}
       <div style={{ marginBottom: '24px' }}>
         <button
           onClick={() => setShowNotes(true)}
@@ -269,7 +288,6 @@ export default function ProjectDetailPage() {
         </button>
       </div>
 
-      {/* Модальное окно заметок */}
       {showNotes && (
         <div style={{
           position: 'fixed',
@@ -332,8 +350,21 @@ export default function ProjectDetailPage() {
         </div>
       )}
 
-      {/* Кнопки */}
-      <div style={{ display: 'flex', gap: '12px' }}>
+      {/* Кнопки: На главную + Сохранить */}
+      <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+        <button
+          onClick={() => navigate('/')}
+          style={{
+            padding: '10px 16px',
+            backgroundColor: '#6c757d',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          ← {t('back_to_projects')}
+        </button>
         <button
           onClick={handleSaveProject}
           style={{
@@ -346,19 +377,6 @@ export default function ProjectDetailPage() {
           }}
         >
           {t('save')}
-        </button>
-        <button
-          onClick={() => navigate('/')}
-          style={{
-            padding: '10px 16px',
-            backgroundColor: '#6c757d',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          {t('cancel')}
         </button>
       </div>
     </div>
