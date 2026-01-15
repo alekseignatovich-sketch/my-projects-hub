@@ -1,6 +1,7 @@
 {
 "project_title_required": "El título del proyecto es obligatorio",
   "login": "Iniciar sesión",
+  "logout": "Cerrar sesión",
   "signup": "Registrarse",
   "email": "Correo electrónico",
   "password": "Contraseña",
