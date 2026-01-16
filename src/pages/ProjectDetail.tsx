@@ -1,8 +1,10 @@
+// src/pages/ProjectDetail.tsx
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/useAuth';
 import { useI18n } from '../lib/useI18n';
 import { supabase } from '../lib/supabase';
+import { getAIResponse } from '../lib/aiAssistant';
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -15,6 +17,9 @@ export default function ProjectDetailPage() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [notes, setNotes] = useState('');
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [aiResponse, setAiResponse] = useState('');
+  const [aiError, setAiError] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -23,14 +28,14 @@ export default function ProjectDetailPage() {
   }, [user, id]);
 
   const loadProjectData = async () => {
-    const { data: projectData, error: projectError } = await supabase
+    const {  projectData } = await supabase
       .from('projects')
       .select('*')
       .eq('id', id)
       .eq('user_id', user.id)
       .single();
 
-    if (projectError || !projectData) {
+    if (!projectData) {
       navigate('/');
       return;
     }
@@ -40,7 +45,7 @@ export default function ProjectDetailPage() {
     setDescription(projectData.description);
 
     if (projectData.preview_path) {
-      const { data: signedUrlData } = await supabase.storage
+      const {  signedUrlData } = await supabase.storage
         .from('project-assets')
         .createSignedUrl(projectData.preview_path, 3600);
       if (signedUrlData?.signedUrl) {
@@ -48,14 +53,14 @@ export default function ProjectDetailPage() {
       }
     }
 
-    const { data: tasksData } = await supabase
+    const {  tasksData } = await supabase
       .from('tasks')
       .select('*')
       .eq('project_id', id)
       .order('position', { ascending: true });
     setTasks(tasksData || []);
 
-    const { data: notesData } = await supabase
+    const {  notesData } = await supabase
       .from('notes')
       .select('content')
       .eq('project_id', id)
@@ -125,7 +130,7 @@ export default function ProjectDetailPage() {
   const handleAddTask = async () => {
     if (!newTaskTitle.trim() || !id) return;
 
-    const { data: newTask } = await supabase
+    const {  newTask } = await supabase
       .from('tasks')
       .insert({
         project_id: id,
@@ -179,6 +184,44 @@ export default function ProjectDetailPage() {
     }
   };
 
+  // ИИ-функционал
+  const handleAIAssist = async (type: 'description' | 'tasks' | 'improve' | 'notes') => {
+    if (!project || !title) return;
+    
+    setIsGenerating(true);
+    setAiResponse('');
+    setAiError('');
+
+    try {
+      let prompt = '';
+      
+      switch (type) {
+        case 'description':
+          prompt = `Напиши профессиональное описание для проекта "${title}". Описание должно быть кратким (2-3 предложения), в деловом стиле.`;
+          break;
+          
+        case 'tasks':
+          prompt = `Разбей проект "${title}" на 5 конкретных этапов выполнения. Каждый этап должен начинаться с глагола (например, "Создать", "Разработать"). Ответ дай в виде списка через запятую.`;
+          break;
+          
+        case 'improve':
+          prompt = `Проанализируй проект "${title}". Описание: "${description}". Предложи 3 конкретных улучшения или идеи для развития. Ответ дай кратко.`;
+          break;
+          
+        case 'notes':
+          prompt = `Напиши содержательные заметки для этапа проекта "${title}". Заметки должны включать советы, на что обратить внимание, возможные риски. Объём: 3-4 предложения.`;
+          break;
+      }
+
+      const response = await getAIResponse(prompt);
+      setAiResponse(response);
+    } catch (error) {
+      setAiError((error as Error).message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const progress = tasks.length
     ? Math.round((tasks.filter(t => t.completed).length / tasks.length) * 100)
     : 0;
@@ -191,6 +234,99 @@ export default function ProjectDetailPage() {
         <h1 style={{ margin: 0, color: '#0f0' }}>{title}</h1>
         <span style={{ fontSize: '14px', fontWeight: 'bold' }}>{progress}%</span>
       </div>
+
+      {/* Кнопки ИИ */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', 
+        gap: '8px', 
+        marginBottom: '16px' 
+      }}>
+        <button
+          onClick={() => handleAIAssist('description')}
+          disabled={isGenerating}
+          style={{
+            padding: '6px 10px',
+            fontSize: '14px',
+            backgroundColor: '#6a0dad',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px'
+          }}
+        >
+          📝 Описание
+        </button>
+        <button
+          onClick={() => handleAIAssist('tasks')}
+          disabled={isGenerating}
+          style={{
+            padding: '6px 10px',
+            fontSize: '14px',
+            backgroundColor: '#6a0dad',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px'
+          }}
+        >
+          ✅ Этапы
+        </button>
+        <button
+          onClick={() => handleAIAssist('improve')}
+          disabled={isGenerating}
+          style={{
+            padding: '6px 10px',
+            fontSize: '14px',
+            backgroundColor: '#6a0dad',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px'
+          }}
+        >
+          💡 Улучшить
+        </button>
+        <button
+          onClick={() => handleAIAssist('notes')}
+          disabled={isGenerating}
+          style={{
+            padding: '6px 10px',
+            fontSize: '14px',
+            backgroundColor: '#6a0dad',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px'
+          }}
+        >
+          📓 Заметки
+        </button>
+      </div>
+
+      {/* Ошибки ИИ */}
+      {aiError && (
+        <div style={{ 
+          padding: '10px', 
+          background: 'rgba(220, 53, 69, 0.2)', 
+          color: '#ff6b6b',
+          borderRadius: '4px',
+          marginBottom: '16px'
+        }}>
+          {aiError}
+        </div>
+      )}
+
+      {/* Ответ ИИ */}
+      {aiResponse && (
+        <div style={{
+          padding: '12px',
+          background: 'rgba(106, 13, 173, 0.2)',
+          border: '1px solid #6a0dad',
+          borderRadius: '4px',
+          color: '#e0b0ff',
+          whiteSpace: 'pre-wrap',
+          marginBottom: '16px'
+        }}>
+          {aiResponse}
+        </div>
+      )}
 
       <textarea
         value={description}
