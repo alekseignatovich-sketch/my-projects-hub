@@ -1,3 +1,4 @@
+// src/App.tsx
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './lib/useAuth';
@@ -8,9 +9,6 @@ import SignupPage from './pages/SignupPage';
 import Dashboard from './pages/Dashboard';
 import ProjectDetailPage from './pages/ProjectDetail';
 
-// Тип для языка
-type Language = 'en' | 'ru' | 'es';
-
 function ProtectedRoute({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
   if (loading) return <div>Loading...</div>;
@@ -19,28 +17,22 @@ function ProtectedRoute({ children }: { children: JSX.Element }) {
 }
 
 function App() {
-  const { user, loading, getPreferredLanguage } = useAuth();
+  const { user } = useAuth();
   const { lang, t, setLanguage } = useI18n();
 
-  // Загрузка языка из профиля при входе
+  // Сохраняем язык в профиль при изменении
   useEffect(() => {
-    if (!loading && user) {
-      getPreferredLanguage().then(savedLang => {
-        setLanguage(savedLang);
-      });
-    }
-  }, [loading, user, setLanguage]);
-
-  // Смена языка: мгновенно + сохранение в профиль
-  const handleLangChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newLang = e.target.value as Language;
-    setLanguage(newLang); // ← мгновенное обновление UI
-    if (user) {
+    if (user && lang) {
       supabase
         .from('user_profiles')
-        .update({ preferred_language: newLang })
+        .update({ preferred_language: lang })
         .eq('id', user.id);
     }
+  }, [lang, user]);
+
+  const handleLangChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newLang = e.target.value as 'en' | 'ru' | 'es';
+    setLanguage(newLang);
   };
 
   return (
