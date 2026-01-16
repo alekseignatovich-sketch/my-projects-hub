@@ -1,5 +1,8 @@
 {
   "project_title_required": "Название проекта обязательно",
+  "preview_uploaded": "Превью загружено!",
+  "upload_failed": "Не удалось загрузить превью",
+  "notes_saved": "Заметки сохранены!",
   "login": "Войти",
   "logout": "Выйти",
   "signup": "Регистрация",
