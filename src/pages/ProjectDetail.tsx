@@ -23,7 +23,7 @@ export default function ProjectDetailPage() {
   }, [user, id]);
 
   const loadProjectData = async () => {
-    const {  data: projectData } = await supabase
+    const {   projectData } = await supabase
       .from('projects')
       .select('*')
       .eq('id', id)
@@ -40,7 +40,7 @@ export default function ProjectDetailPage() {
     setDescription(projectData.description);
 
     if (projectData.preview_path) {
-      const {  data: signedUrlData } = await supabase.storage
+      const {   signedUrlData } = await supabase.storage
         .from('project-assets')
         .createSignedUrl(projectData.preview_path, 3600);
       if (signedUrlData?.signedUrl) {
@@ -106,19 +106,40 @@ export default function ProjectDetailPage() {
     const file = e.target.files?.[0];
     if (!file || !id) return;
 
-    const fileExt = file.name.split('.').pop();
+    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'bin';
     const filePath = `projects/${id}/preview.${fileExt}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('project-assets')
-      .upload(filePath, file, { upsert: true });
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('project-assets')
+        .upload(filePath, file, { upsert: true });
 
-    if (!uploadError) {
-      await supabase
+      if (uploadError) throw uploadError;
+
+      const { error: updateError } = await supabase
         .from('projects')
-        .update({ preview_path: filePath, updated_at: new Date().toISOString() })
+        .update({ 
+          preview_path: filePath,
+          updated_at: new Date().toISOString() 
+        })
         .eq('id', id);
-      loadProjectData();
+
+      if (updateError) throw updateError;
+
+      setProject(prev => ({ ...prev, preview_path: filePath }));
+      
+      const {   signedUrlData } = await supabase.storage
+        .from('project-assets')
+        .createSignedUrl(filePath, 3600);
+      
+      if (signedUrlData?.signedUrl) {
+        setPreviewUrl(signedUrlData.signedUrl);
+      }
+
+      alert(t('preview_uploaded'));
+    } catch (error) {
+      console.error('Upload failed:', error);
+      alert(t('upload_failed'));
     }
   };
 
