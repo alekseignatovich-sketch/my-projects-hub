@@ -1,3 +1,4 @@
+// src/lib/useAuth.ts
 import { useEffect, useState } from 'react';
 import { supabase } from './supabase';
 import { Language } from './useI18n';
@@ -8,17 +9,17 @@ export function useAuth() {
 
   useEffect(() => {
     const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {  { session } } = await supabase.auth.getSession();
       const sessionUser = session?.user;
 
       if (sessionUser) {
-        const { data: profile, error } = await supabase
+        const {  profile } = await supabase
           .from('user_profiles')
           .select('preferred_language')
           .eq('id', sessionUser.id)
           .single();
 
-        if (error) {
+        if (!profile) {
           await supabase
             .from('user_profiles')
             .insert({ id: sessionUser.id, preferred_language: 'en' });
@@ -47,22 +48,11 @@ export function useAuth() {
     initAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    return data;
-  };
+  // ... остальные методы ...
 
-  const signup = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) throw error;
-    return data;
-  };
-
-  const logout = () => supabase.auth.signOut();
-
-  const updatePreferredLanguage = async (lang: Language) => {
-    if (!user) return lang;
+  // ✅ НОВЫЙ МЕТОД: мгновенное обновление языка
+  const setLanguage = async (lang: Language) => {
+    if (!user) return;
     await supabase
       .from('user_profiles')
       .update({ preferred_language: lang })
@@ -72,7 +62,7 @@ export function useAuth() {
 
   const getPreferredLanguage = async (): Promise<Language> => {
     if (!user) return 'en';
-    const { data: profile } = await supabase
+    const {  profile } = await supabase
       .from('user_profiles')
       .select('preferred_language')
       .eq('id', user.id)
@@ -87,6 +77,6 @@ export function useAuth() {
     signup, 
     logout, 
     getPreferredLanguage,
-    updatePreferredLanguage 
+    setLanguage // ← экспортируем
   };
 }
