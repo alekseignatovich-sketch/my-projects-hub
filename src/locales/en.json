@@ -1,5 +1,8 @@
 {
   "project_title_required": "Project title is required",
+  "preview_uploaded": "Preview uploaded!",
+  "upload_failed": "Failed to upload preview",
+  "notes_saved": "Notes saved!",
   "login": "Log in",
   "logout": "Log out",
   "signup": "Sign up",
