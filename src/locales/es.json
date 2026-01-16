@@ -1,5 +1,8 @@
 {
 "project_title_required": "El título del proyecto es obligatorio",
+    "preview_uploaded": "¡Vista previa subida!",
+  "upload_failed": "Error al subir la vista previa",
+  "notes_saved": "¡Notas guardadas!",
   "login": "Iniciar sesión",
   "logout": "Cerrar sesión",
   "signup": "Registrarse",
