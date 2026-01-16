@@ -20,7 +20,7 @@ function App() {
   const { user } = useAuth();
   const { lang, t, setLanguage } = useI18n();
 
-  // Сохраняем язык в профиль при изменении
+  // Сохраняем язык в профиль
   useEffect(() => {
     if (user && lang) {
       supabase
@@ -57,7 +57,8 @@ function App() {
             <option value="es">Español</option>
           </select>
         )}
-        <Routes>
+        {/* Ключевой момент: key={lang} */}
+        <Routes key={lang}>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route
