@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './lib/useAuth';
 import { useI18n } from './lib/useI18n';
-import { supabase } from './lib/supabase'; // ✅ Импорт добавлен
+import { supabase } from './lib/supabase';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import Dashboard from './pages/Dashboard';
@@ -16,28 +16,21 @@ function ProtectedRoute({ children }: { children: JSX.Element }) {
 }
 
 function App() {
-  const { user, loading, getPreferredLanguage } = useAuth();
-  const { lang, setLanguage } = useI18n();
+  const { user, loading, getPreferredLanguage, setLanguage: saveLanguageToDB } = useAuth();
+  const { lang, setLanguage: setUILanguage } = useI18n();
 
   useEffect(() => {
     if (!loading && user) {
       getPreferredLanguage().then(savedLang => {
-        setLanguage(savedLang);
+        setUILanguage(savedLang);
       });
     }
   }, [loading, user]);
 
   const handleLangChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newLang = e.target.value as 'en' | 'ru' | 'es';
-    // Мгновенно меняем язык в UI
-    setLanguage(newLang);
-    // Сохраняем в фоне
-    if (user) {
-      supabase
-        .from('user_profiles')
-        .update({ preferred_language: newLang })
-        .eq('id', user.id);
-    }
+    saveLanguageToDB(newLang);
+    setUILanguage(newLang);
   };
 
   return (
