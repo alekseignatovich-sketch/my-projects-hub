@@ -12,11 +12,13 @@ export function useI18n() {
   const [lang, setLang] = useState<Language>(DEFAULT_LANG);
   const [t, setT] = useState<(key: string) => string>(() => (key: string) => key);
 
+  // Загрузка переводов при смене языка
   useEffect(() => {
     const translations = LOCALES[lang] || LOCALES[DEFAULT_LANG];
     setT(() => (key: string) => translations[key] || key);
   }, [lang]);
 
+  // Установка языка + сохранение в localStorage
   const setLanguage = useCallback((newLang: Language) => {
     setLang(newLang);
     localStorage.setItem('preferred_language', newLang);
