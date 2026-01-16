@@ -23,14 +23,14 @@ export default function ProjectDetailPage() {
   }, [user, id]);
 
   const loadProjectData = async () => {
-    const {   projectData } = await supabase
+    const { data: projectData, error: projectError } = await supabase
       .from('projects')
       .select('*')
       .eq('id', id)
       .eq('user_id', user.id)
       .single();
 
-    if (!projectData) {
+    if (projectError || !projectData) {
       navigate('/');
       return;
     }
@@ -40,7 +40,7 @@ export default function ProjectDetailPage() {
     setDescription(projectData.description);
 
     if (projectData.preview_path) {
-      const {   signedUrlData } = await supabase.storage
+      const { data: signedUrlData } = await supabase.storage
         .from('project-assets')
         .createSignedUrl(projectData.preview_path, 3600);
       if (signedUrlData?.signedUrl) {
@@ -48,14 +48,14 @@ export default function ProjectDetailPage() {
       }
     }
 
-    const {  data: tasksData } = await supabase
+    const { data: tasksData } = await supabase
       .from('tasks')
       .select('*')
       .eq('project_id', id)
       .order('position', { ascending: true });
     setTasks(tasksData || []);
 
-    const {  data: notesData } = await supabase
+    const { data: notesData } = await supabase
       .from('notes')
       .select('content')
       .eq('project_id', id)
@@ -106,47 +106,26 @@ export default function ProjectDetailPage() {
     const file = e.target.files?.[0];
     if (!file || !id) return;
 
-    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'bin';
+    const fileExt = file.name.split('.').pop();
     const filePath = `projects/${id}/preview.${fileExt}`;
 
-    try {
-      const { error: uploadError } = await supabase.storage
-        .from('project-assets')
-        .upload(filePath, file, { upsert: true });
+    const { error: uploadError } = await supabase.storage
+      .from('project-assets')
+      .upload(filePath, file, { upsert: true });
 
-      if (uploadError) throw uploadError;
-
-      const { error: updateError } = await supabase
+    if (!uploadError) {
+      await supabase
         .from('projects')
-        .update({ 
-          preview_path: filePath,
-          updated_at: new Date().toISOString() 
-        })
+        .update({ preview_path: filePath, updated_at: new Date().toISOString() })
         .eq('id', id);
-
-      if (updateError) throw updateError;
-
-      setProject(prev => ({ ...prev, preview_path: filePath }));
-      
-      const {   signedUrlData } = await supabase.storage
-        .from('project-assets')
-        .createSignedUrl(filePath, 3600);
-      
-      if (signedUrlData?.signedUrl) {
-        setPreviewUrl(signedUrlData.signedUrl);
-      }
-
-      alert(t('preview_uploaded'));
-    } catch (error) {
-      console.error('Upload failed:', error);
-      alert(t('upload_failed'));
+      loadProjectData();
     }
   };
 
   const handleAddTask = async () => {
     if (!newTaskTitle.trim() || !id) return;
 
-    const {  data: newTask } = await supabase
+    const { data: newTask } = await supabase
       .from('tasks')
       .insert({
         project_id: id,
@@ -182,13 +161,22 @@ export default function ProjectDetailPage() {
 
   const handleSaveNotes = async () => {
     if (!id) return;
-    await supabase
+    const { error } = await supabase
       .from('notes')
       .upsert(
-        { project_id: id, content: notes },
-        { onConflict: 'project_id' }
+        { 
+          project_id: id, 
+          content: notes,
+          updated_at: new Date().toISOString()
+        },
+        { 
+          onConflict: 'project_id',
+          ignoreDuplicates: false 
+        }
       );
-    alert(t('notes_saved'));
+    if (!error) {
+      alert(t('notes_saved'));
+    }
   };
 
   const progress = tasks.length
