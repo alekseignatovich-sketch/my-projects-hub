@@ -1,28 +1,31 @@
-import { useState, useEffect, useCallback } from 'react';
+// src/lib/useI18n.ts
+import { useState, useEffect } from 'react';
 import en from '../locales/en.json';
 import ru from '../locales/ru.json';
 import es from '../locales/es.json';
 
-const LOCALES: Record<string, Record<string, string>> = { en, ru, es };
-const DEFAULT_LANG = 'en';
+const translations = { en, ru, es };
 
 export type Language = 'en' | 'ru' | 'es';
 
 export function useI18n() {
-  const [lang, setLang] = useState<Language>(DEFAULT_LANG);
-  const [t, setT] = useState<(key: string) => string>(() => (key: string) => key);
+  const [lang, setLang] = useState<Language>('en');
 
-  // Загрузка переводов при смене языка
   useEffect(() => {
-    const translations = LOCALES[lang] || LOCALES[DEFAULT_LANG];
-    setT(() => (key: string) => translations[key] || key);
-  }, [lang]);
+    const saved = localStorage.getItem('preferred_language');
+    if (saved === 'ru' || saved === 'es') {
+      setLang(saved as Language);
+    }
+  }, []);
 
-  // Установка языка + сохранение в localStorage
-  const setLanguage = useCallback((newLang: Language) => {
+  const t = (key: string): string => {
+    return translations[lang][key] || key;
+  };
+
+  const setLanguage = (newLang: Language) => {
     setLang(newLang);
     localStorage.setItem('preferred_language', newLang);
-  }, []);
+  };
 
   return { lang, t, setLanguage };
 }
